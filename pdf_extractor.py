@@ -1,6 +1,7 @@
 import PyPDF2
 import pathlib
 import os
+import re
 
 def extract_text_from_pdf(pdf_path):
     with open(pdf_path, 'rb') as pdf_file:
@@ -17,8 +18,12 @@ def extract_text_from_pdf(pdf_path):
             # Extract text from the page
             text = page.extract_text()
 
+            taxCodes = re.findall(r'(?<![a-zA-Z0-9])\d{10}(?:-\d{3})?(?![a-zA-Z0-9])', text)
+            print(f"{taxCodes}")
+
             # Print the extracted text for the current page
-            print(f"Page {page_number + 1} text:\n{text}\n")
+            #print(f"Page {page_number + 1} text:\n{text}\n")
+            
 
 def get_pdf_files(directory):
     pdf_files = []
