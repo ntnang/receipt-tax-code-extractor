@@ -2,8 +2,10 @@ import PyPDF2
 import pathlib
 import os
 import re
+import openpyxl
 
-def extract_text_from_pdf(pdf_path):
+def extract_tax_codes_from_pdf(pdf_path):
+    tax_codes = []
     with open(pdf_path, 'rb') as pdf_file:
         pdf_reader = PyPDF2.PdfReader(pdf_file)
 
@@ -18,11 +20,14 @@ def extract_text_from_pdf(pdf_path):
             # Extract text from the page
             text = page.extract_text()
 
-            taxCodes = re.findall(r'(?<![a-zA-Z0-9])\d{10}(?:-\d{3})?(?![a-zA-Z0-9])', text)
-            print(f"{taxCodes}")
+            matches = re.findall(r'(?<![a-zA-Z0-9])\d{10}(?:-\d{3})?(?![a-zA-Z0-9])', text)
+
+            tax_codes.extend([match for match in matches if (match != '0300942001-022')])
+            print(f"{tax_codes}")
 
             # Print the extracted text for the current page
             #print(f"Page {page_number + 1} text:\n{text}\n")
+    return tax_codes
             
 
 def get_pdf_files(directory):
@@ -40,12 +45,37 @@ def get_pdf_files(directory):
 
     return pdf_files
 
+def export_to_excel(tax_codes_matrix):
+    # Create a new Excel workbook
+    workbook = openpyxl.Workbook()
+
+    # Select the active sheet (default is the first sheet)
+    sheet = workbook.active
+
+    # Starting row to write the data
+    start_row = 1
+
+    # Loop through the list of lists and write it to consecutive rows and columns
+    for row_index, tax_codes in enumerate(tax_codes_matrix):
+        for col_index, tax_code in enumerate(tax_codes):
+            sheet.cell(row=start_row + row_index, column=col_index + 1, value=tax_code)
+
+    # Save the workbook to a file
+    workbook.save('mst.xlsx')
+
+    print('Data written to the Excel file within a loop successfully.')
+
+
 # Path to the current script
 current_path = pathlib.Path(__file__).parent.resolve()
 pdf_files = get_pdf_files(current_path)
-
+tax_codes_matrix = []
 
 # Extracting PDF files
 for pdf_file in pdf_files:
-    print(f"Extracting: {pdf_file}")
-    extract_text_from_pdf(pdf_file)
+    print(f"Extracting tax codes in: {pdf_file}")
+    tax_codes_matrix.append(extract_tax_codes_from_pdf(pdf_file))
+
+export_to_excel(tax_codes_matrix)
+
+
