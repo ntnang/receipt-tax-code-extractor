@@ -1,5 +1,6 @@
 import PyPDF2
-import pathlib
+#import pathlib
+import sys
 import os
 import re
 import openpyxl
@@ -67,8 +68,22 @@ def export_to_excel(tax_codes_matrix):
 
 
 # Path to the current script
-current_path = pathlib.Path(__file__).parent.resolve()
-pdf_files = get_pdf_files(current_path)
+#current_path = pathlib.Path(__file__).parent.resolve()
+
+# Get the path to the executable
+exe_path = sys.argv[0]
+
+# Get the directory containing the executable
+exe_dir = os.path.dirname(exe_path)
+
+# Open a file in write mode ('w')
+with open('log.txt', 'w') as file:
+    # Write content to the file
+    file.write(exe_dir)
+
+# File is automatically closed when you exit the 'with' block
+
+pdf_files = get_pdf_files(exe_dir)
 tax_codes_matrix = []
 
 # Extracting PDF files
