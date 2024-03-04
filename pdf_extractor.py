@@ -5,7 +5,7 @@ import os
 import re
 import openpyxl
 
-def extract_tax_codes_from_pdf(pdf_path):
+def extract_tax_codes_from_pdf(pdf_path, start_page = 1):
     tax_codes = []
     with open(pdf_path, 'rb') as pdf_file:
         pdf_reader = PyPDF2.PdfReader(pdf_file)
@@ -13,8 +13,11 @@ def extract_tax_codes_from_pdf(pdf_path):
         # Get the number of pages in the PDF
         num_pages = len(pdf_reader.pages)
 
+        # Ensure the start_page is within the valid range
+        start_page = max(min(start_page, num_pages), 1)
+
         # Iterate through each page
-        for page_number in range(num_pages):
+        for page_number in range(start_page, num_pages):
             # Get the page
             page = pdf_reader.pages[page_number]
 
@@ -28,6 +31,7 @@ def extract_tax_codes_from_pdf(pdf_path):
 
             # Print the extracted text for the current page
             #print(f"Page {page_number + 1} text:\n{text}\n")
+        pdf_file.close()
     return tax_codes
             
 
