@@ -54,7 +54,7 @@ def get_pdf_files(directory):
 def get_blacklist_tax_codes(directory):
     blacklist_tax_codes = []
     for file_name in os.listdir(directory):
-        if file_name == "ds.xls" or file_name == "ds.xlsx":
+        if file_name == "blacklist_tax_codes.xls" or file_name == "blacklist_tax_codes.xlsx":
             
             # Load the Excel file
             blacklist_path = os.path.join(directory, file_name)
@@ -74,7 +74,7 @@ def get_blacklist_tax_codes(directory):
     return blacklist_tax_codes
 
 
-def export_to_excel(tax_codes_matrix):
+def export_to_excel(tax_codes):
     # Create a new Excel workbook
     workbook = openpyxl.Workbook()
 
@@ -85,12 +85,16 @@ def export_to_excel(tax_codes_matrix):
     start_row = 1
 
     # Loop through the list of lists and write it to consecutive rows and columns
-    for row_index, tax_codes in enumerate(tax_codes_matrix):
-        for col_index, tax_code in enumerate(tax_codes):
-            sheet.cell(row=start_row + row_index, column=col_index + 1, value=tax_code)
+    for row_index, tax_code in enumerate(tax_codes):
+        sheet.cell(row=start_row + row_index, column=1, value=tax_code)
 
-    # Save the workbook to a file
-    workbook.save('mst.xlsx')
+    try:
+        # Save the workbook to a file
+        workbook.save('legal_tax_codes.xlsx')
+    except PermissionError:
+        print("Permission error: The file might be open or locked.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     print('Data written to the Excel file within a loop successfully.')
 
@@ -108,22 +112,20 @@ blacklist_tax_codes = get_blacklist_tax_codes(exe_dir)
 # File is automatically closed when you exit the 'with' block
 
 pdf_files = get_pdf_files(exe_dir)
-# extracted_tax_codes = []
 legal_tax_codes = []
+all_extracted_tax_codes = []
 
 # Extracting PDF files
 for pdf_file in pdf_files:
     print(f"Extracting tax codes in: {pdf_file}")
     extracted_tax_codes = extract_tax_codes_from_pdf(pdf_file)
-    legal_tax_codes = list(set(extracted_tax_codes) - set(blacklist_tax_codes))
-    # extracted_tax_codes.append(extracted_tax_code)
-    # if (extracted_tax_code not in blacklist_tax_codes):
-    #     legal_tax_codes.append(extracted_tax_code)
+    all_extracted_tax_codes += extracted_tax_codes
+    legal_tax_codes += list(set(extracted_tax_codes) - set(blacklist_tax_codes))
 
 print("----------blacklist_tax_codes------------")
 print(blacklist_tax_codes)
-# print("----------extracted_tax_codes------------")
-# print(extracted_tax_codes)
+print("----------all_extracted_tax_codes------------")
+print(all_extracted_tax_codes)
 print("----------legal_tax_codes------------")
 print(legal_tax_codes)
 
@@ -133,14 +135,20 @@ export_to_excel(legal_tax_codes)
 with open('log.txt', 'w') as file:
     logs = []
     logs.append(exe_dir)
-    logs.append(pdf_files)
+    logs += pdf_files
     logs.append("----------blacklist_tax_codes------------")
-    logs.append(blacklist_tax_codes)
-    # logs.append("----------extracted_tax_codes------------")
-    # logs.append(extracted_tax_codes)
+    logs += blacklist_tax_codes
+    logs.append("----------all_extracted_tax_codes------------")
+    logs +=all_extracted_tax_codes
     logs.append("----------legal_tax_codes------------")
-    logs.append(legal_tax_codes)
+    logs += legal_tax_codes
+
+    # Add a newline character at the end of each line
+    logs = [log + "\n" for log in logs]
+
+    print(logs)
+
     # Write content to the file
     file.writelines(logs)
 
-
+input("Press Enter to continue.")
