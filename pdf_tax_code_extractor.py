@@ -168,8 +168,6 @@ with open('log.txt', 'a') as file:
     # Add a newline character at the end of each line
     logs = [log + "\n" for log in logs]
 
-    print(logs)
-
     # Write content to the file
     file.writelines(logs)
 
