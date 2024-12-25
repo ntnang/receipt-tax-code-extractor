@@ -4,7 +4,9 @@ import sys
 import os
 import re
 import openpyxl
+from openpyxl.styles import PatternFill
 import pandas
+from datetime import datetime
 
 def extract_tax_codes_from_pdf(pdf_path, start_page = 0):
     tax_codes = []
@@ -74,23 +76,32 @@ def get_blacklist_tax_codes(directory):
     return blacklist_tax_codes
 
 
-def export_to_excel(tax_codes):
+def export_to_excel(extracted_tax_codes, blacklist_tax_codes):
     # Create a new Excel workbook
     workbook = openpyxl.Workbook()
 
     # Select the active sheet (default is the first sheet)
     sheet = workbook.active
 
+    sheet["A1"] = "Tax code"
+    sheet["B1"] = "File name"
+
     # Starting row to write the data
-    start_row = 1
+    start_row = 2
+
+    # Define a color fill (e.g., yellow background)
+    yellow_background = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
 
     # Loop through the list of lists and write it to consecutive rows and columns
-    for row_index, tax_code in enumerate(tax_codes):
-        sheet.cell(row=start_row + row_index, column=1, value=tax_code)
+    for row_index, tax_code in enumerate(extracted_tax_codes):
+        value_cell = sheet.cell(row=start_row + row_index, column=1, value=tax_code["value"])
+        sheet.cell(row=start_row + row_index, column=2, value=tax_code["file_name"])
+        if tax_code["value"] in blacklist_tax_codes:
+            value_cell.fill = yellow_background
 
     try:
         # Save the workbook to a file
-        workbook.save('legal_tax_codes.xlsx')
+        workbook.save('checked_extracted_tax_codes.xlsx')
     except PermissionError:
         print("Permission error: The file might be open or locked.")
     except Exception as e:
@@ -112,36 +123,47 @@ blacklist_tax_codes = get_blacklist_tax_codes(exe_dir)
 # File is automatically closed when you exit the 'with' block
 
 pdf_files = get_pdf_files(exe_dir)
-legal_tax_codes = []
-all_extracted_tax_codes = []
+extracted_tax_codes_with_relevent_file_names = []
 
 # Extracting PDF files
 for pdf_file in pdf_files:
     print(f"Extracting tax codes in: {pdf_file}")
     extracted_tax_codes = extract_tax_codes_from_pdf(pdf_file)
-    all_extracted_tax_codes += extracted_tax_codes
-    legal_tax_codes += list(set(extracted_tax_codes) - set(blacklist_tax_codes))
+    for tax_code in extracted_tax_codes:
+        pdf_file_name = os.path.basename(pdf_file)
+        extracted_tax_codes_with_relevent_file_names.append({ "value": tax_code, "file_name": pdf_file_name })
 
 print("----------blacklist_tax_codes------------")
 print(blacklist_tax_codes)
-print("----------all_extracted_tax_codes------------")
-print(all_extracted_tax_codes)
-print("----------legal_tax_codes------------")
-print(legal_tax_codes)
+print("----------extracted_tax_codes_with_relevent_file_names------------")
+print(extracted_tax_codes_with_relevent_file_names)
 
-export_to_excel(legal_tax_codes)
+export_to_excel(extracted_tax_codes_with_relevent_file_names, blacklist_tax_codes)
 
-#Open a file in write mode ('w')
-with open('log.txt', 'w') as file:
+#Open a file in append mode ('a')
+with open('log.txt', 'a') as file:
     logs = []
+
+    logs.append("--------------------------------------------------------")
+
+    # Get the current date and time
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    logs.append(current_datetime)
+
+    logs.append("----------exe_dir------------")
     logs.append(exe_dir)
+
+    logs.append("----------pdf_files------------")
     logs += pdf_files
+
     logs.append("----------blacklist_tax_codes------------")
     logs += blacklist_tax_codes
-    logs.append("----------all_extracted_tax_codes------------")
-    logs +=all_extracted_tax_codes
-    logs.append("----------legal_tax_codes------------")
-    logs += legal_tax_codes
+
+    logs.append("----------extracted_tax_codes_with_relevent_file_names------------")
+    logs.append(str(extracted_tax_codes_with_relevent_file_names))
+
+    logs.append("--------------------------------------------------------")
 
     # Add a newline character at the end of each line
     logs = [log + "\n" for log in logs]
