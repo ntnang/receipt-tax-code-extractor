@@ -60,7 +60,7 @@ def get_blacklist_tax_codes(directory):
             
             # Load the Excel file
             blacklist_path = os.path.join(directory, file_name)
-            dataframe = pandas.read_excel(blacklist_path, sheet_name=None) # `sheet_name=None` loads all sheets into a dict
+            dataframe = pandas.read_excel(blacklist_path, sheet_name=None, dtype=str) # `sheet_name=None` loads all sheets into a dict
 
             # Iterate through all sheets
             for sheet_name, sheet_data in dataframe.items():
@@ -70,7 +70,7 @@ def get_blacklist_tax_codes(directory):
                     if not row.isnull().all():
                         print(f"Row {index}:")
                         for col_name, cell_value in row.items():
-                            if pandas.notnull(cell_value):
+                            if col_name == "Tax code" and pandas.notnull(cell_value):
                                 print(f"  Column '{col_name}': {cell_value}")
                                 blacklist_tax_codes.append(cell_value)
     return blacklist_tax_codes
