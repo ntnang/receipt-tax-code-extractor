@@ -1,6 +1,7 @@
 import pandas as pd
 from docx import Document
 from vietnam_number import n2w
+import locale
 
 def generate_receipts_from_template_with_filled_data():
     data_file = "data.xlsx"
@@ -14,7 +15,7 @@ def generate_receipts_from_template_with_filled_data():
 
     for index, row in df.iloc[start_index:].iterrows():
         row_dict = {i: value for i, value in enumerate(df.iloc[index])}
-        replace_placeholders(template_file, f"filled_document_{index}.docx", row_dict)
+        replace_placeholders(template_file, f"receipt_{index}.docx", row_dict)
 
 def replace_placeholders(doc_file, output_file, replacements):
     # sh.copy(doc_path, output_path)
@@ -39,16 +40,16 @@ def replace_placeholders(doc_file, output_file, replacements):
                         for key, value in replacements.items():
                             placeholder = f"{{{key}}}"
                             if placeholder in run.text:
-                                run.text = run.text.replace(placeholder, str(value))
+                                if key == 5:
+                                    run.text = run.text.replace(placeholder, locale.currency(abs(value), grouping=True))
+                                else: run.text = run.text.replace(placeholder, str(value))
                             if "{#}" in run.text:
-                                run.text = run.text.replace("{#}", n2w(str(replacements.get(5))))
+                                run.text = run.text.replace("{#}", n2w(str(replacements.get(5))) + " đồng")
 
     doc.save(output_file)
     print(f"File saved as {output_file}")
 
-# def num_to_text(num):
-#     text = ""
-#     digit_text = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
-#     a = ["mười", "mươi", "trăm", "ngàn", "triệu", "tỷ"]
+# Set locale to Vietnamese (Vietnam)
+locale.setlocale(locale.LC_ALL, 'vi_VN.UTF-8')
 
 generate_receipts_from_template_with_filled_data()
