@@ -2,6 +2,7 @@ import pandas as pd
 from docx import Document
 from vietnam_number import n2w
 import locale
+from datetime import datetime
 
 def generate_receipts_from_template_with_filled_data():
     data_file = "data.xlsx"
@@ -40,14 +41,19 @@ def replace_placeholders(doc_file, output_file, replacements):
                         for key, value in replacements.items():
                             placeholder = f"{{{key}}}"
                             if placeholder in run.text:
-                                if key == 5:
-                                    run.text = run.text.replace(placeholder, locale.currency(abs(value), grouping=True))
-                                else: run.text = run.text.replace(placeholder, str(value))
+                                match key:
+                                    case 4: run.text = run.text.replace(placeholder, format_date_vn(value))
+                                    case 5: run.text = run.text.replace(placeholder, locale.format_string('%.0f đồng', abs(value), grouping=True))
+                                    case _: run.text = run.text.replace(placeholder, str(value))
                             if "{#}" in run.text:
                                 run.text = run.text.replace("{#}", n2w(str(replacements.get(5))) + " đồng")
 
     doc.save(output_file)
     print(f"File saved as {output_file}")
+
+def format_date_vn(date_str):
+    date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+    return f"ngày {date_obj.day} tháng {date_obj.month} năm {date_obj.year}"
 
 # Set locale to Vietnamese (Vietnam)
 locale.setlocale(locale.LC_ALL, 'vi_VN.UTF-8')
