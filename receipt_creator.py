@@ -12,7 +12,7 @@ def generate_receipts_from_template_with_filled_data():
     df = pd.read_excel(data_file)  # Read the Excel file
 
     # Define starting index
-    start_index = 2
+    start_index = 1
 
     for index, row in df.iloc[start_index:].iterrows():
         row_dict = {i: value for i, value in enumerate(df.iloc[index])}
