@@ -5,26 +5,41 @@ import pathlib
 # bas = bank account statement
 # deb = day end balance
 
-def extract_bas_deb(directory):
+def extract_bas_deb(directory: str) -> pandas.DataFrame:
     for file_name in os.listdir(directory):
         if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
             bas_file_path = os.path.join(directory, file_name)
-            bas = pandas.read_excel(bas_file_path, sheet_name=None, dtype=str)["Sheet 1"]
+            print(bas_file_path)
+            bas = pandas.read_excel(bas_file_path, dtype=str)
             print(bas)
             bas["transaction_date_time"] = pandas.to_datetime(bas["Thời gian giao dịch"])
             bas["transaction_date"] = bas["transaction_date_time"].dt.date
             deb_idx = bas.groupby("transaction_date")["transaction_date_time"].idxmax()
-            deb_per_date = bas.loc(deb_idx, ["transaction_date", "Số dư cuối"]).set_index("transaction_date")
+            print(deb_idx)
+            print(bas.groupby("transaction_date")["transaction_date_time"].max())
+            deb_per_date = bas.loc[deb_idx, ["transaction_date", "Số dư cuối"]].set_index("transaction_date")
             print(deb_per_date)
     return deb_per_date
 
 def calculate_bas_deb(directory):
     return
 
-def extract_evn_deb():
+def extract_evn_deb(directory: str) -> pandas.DataFrame:
+    for file_name in os.listdir(directory):
+        if file_name.startswith("So TGNH") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
+            evn_file_path = os.path.join(directory, file_name)
+            print(evn_file_path)
+            evn = pandas.read_excel(evn_file_path, header=None, dtype=str, skiprows=17, skipfooter=8)
+            deb_per_date = evn.loc[evn[7].notna()].iloc[:, [4, 7]]
+            deb_per_date[4] = pandas.to_datetime(deb_per_date[4].str[-10:], format="%d/%m/%Y")
+            print(deb_per_date)
+    return deb_per_date
+
+def export_results(bas_deb: pandas.DataFrame, evn_deb: pandas.DataFrame):
+    output_file_name = "KQ doi soat So phu NH - EVN_CM_009.xlsx"
+    for index, row in bas_deb.iterrows():
+        row
     return
 
-def export_results():
-    return
-
-extract_bas_deb(pathlib.Path(__file__).parent.resolve())
+bas_deb = extract_bas_deb(pathlib.Path(__file__).parent.resolve())
+evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
