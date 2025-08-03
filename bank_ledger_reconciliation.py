@@ -5,7 +5,7 @@ import pathlib
 # bas = bank account statement
 # deb = day end balance
 
-def extract_bas_deb(directory: str) -> pandas.DataFrame:
+def extract_bas_deb(directory: str) -> dict:
     for file_name in os.listdir(directory):
         if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
             bas_file_path = os.path.join(directory, file_name)
@@ -17,29 +17,34 @@ def extract_bas_deb(directory: str) -> pandas.DataFrame:
             deb_idx = bas.groupby("transaction_date")["transaction_date_time"].idxmax()
             print(deb_idx)
             print(bas.groupby("transaction_date")["transaction_date_time"].max())
-            deb_per_date = bas.loc[deb_idx, ["transaction_date", "Số dư cuối"]].set_index("transaction_date")
+            deb_per_date = bas.loc[deb_idx, ["transaction_date", "Số dư cuối"]]
             print(deb_per_date)
-    return deb_per_date
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
 def calculate_bas_deb(directory):
     return
 
-def extract_evn_deb(directory: str) -> pandas.DataFrame:
+def extract_evn_deb(directory: str) -> dict:
     for file_name in os.listdir(directory):
         if file_name.startswith("So TGNH") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
             evn_file_path = os.path.join(directory, file_name)
             print(evn_file_path)
             evn = pandas.read_excel(evn_file_path, header=None, dtype=str, skiprows=17, skipfooter=8)
             deb_per_date = evn.loc[evn[7].notna()].iloc[:, [4, 7]]
-            deb_per_date[4] = pandas.to_datetime(deb_per_date[4].str[-10:], format="%d/%m/%Y")
+            deb_per_date[4] = pandas.to_datetime(deb_per_date[4].str[-10:], format="%d/%m/%Y").dt.date
             print(deb_per_date)
-    return deb_per_date
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
-def export_results(bas_deb: pandas.DataFrame, evn_deb: pandas.DataFrame):
+def export_results(bas_deb: dict, evn_deb: dict):
     output_file_name = "KQ doi soat So phu NH - EVN_CM_009.xlsx"
-    for index, row in bas_deb.iterrows():
-        row
-    return
+    # print(bas_deb)
+    # print(evn_deb)
+    results = []
+    for key, value in bas_deb.items():
+        results.append(dict(transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
+    print(results)
+    return results
 
 bas_deb = extract_bas_deb(pathlib.Path(__file__).parent.resolve())
 evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+export_results(bas_deb, evn_deb)
