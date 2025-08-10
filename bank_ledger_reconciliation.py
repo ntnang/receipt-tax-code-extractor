@@ -1,9 +1,11 @@
 import os
 import pandas
 import pathlib
+from openpyxl import load_workbook
 
 # bas = bank account statement
 # deb = day end balance
+# rt = result template
 
 def extract_bas_deb(directory: str) -> dict:
     for file_name in os.listdir(directory):
@@ -36,13 +38,26 @@ def extract_evn_deb(directory: str) -> dict:
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
 def export_results(bas_deb: dict, evn_deb: dict):
-    output_file_name = "KQ doi soat So phu NH - EVN_CM_009.xlsx"
+    rt_file_name = "KQ doi soat So phu NH - EVN_CM_009.xlsx"
+
+    rt_wb = load_workbook(rt_file_name)
+    rt_ws = rt_wb.active
+
     # print(bas_deb)
     # print(evn_deb)
+    
     results = []
-    for key, value in bas_deb.items():
-        results.append(dict(transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
+    for idx, (key, value) in enumerate(bas_deb.items()):
+        results.append(dict(index=idx, transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
     print(results)
+
+    start_row = 7
+    for i, row in enumerate(results, start=start_row):
+        for j, key in enumerate(row, start=1):
+            rt_ws.cell(row=i, column=j, value=row[key])
+    
+    rt_wb.save("KQ doi soat So phu NH - EVN_CM_009_test.xlsx")
+
     return results
 
 bas_deb = extract_bas_deb(pathlib.Path(__file__).parent.resolve())
