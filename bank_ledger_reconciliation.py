@@ -2,6 +2,7 @@ import os
 import pandas
 import pathlib
 from openpyxl import load_workbook
+import sys
 
 # bas = bank account statement
 # deb = day end balance
@@ -48,7 +49,7 @@ def export_results(bas_deb: dict, evn_deb: dict):
     
     results = []
     for idx, (key, value) in enumerate(bas_deb.items()):
-        results.append(dict(index=idx, transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
+        results.append(dict(index=idx+1, transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
     print(results)
 
     start_row = 7
@@ -60,6 +61,8 @@ def export_results(bas_deb: dict, evn_deb: dict):
 
     return results
 
-bas_deb = extract_bas_deb(pathlib.Path(__file__).parent.resolve())
-evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+exe_path = sys.argv[0]
+exe_dir = os.path.dirname(exe_path) # pathlib.Path(__file__).parent.resolve()
+bas_deb = extract_bas_deb(exe_dir)
+evn_deb = extract_evn_deb(exe_dir)
 export_results(bas_deb, evn_deb)
