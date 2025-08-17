@@ -8,7 +8,7 @@ import sys
 # deb = day end balance
 # rt = result template
 
-def extract_bas_deb(directory: str) -> dict:
+def extract_bas_deb_by_time(directory: str) -> dict:
     for file_name in os.listdir(directory):
         if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
             bas_file_path = os.path.join(directory, file_name)
@@ -21,6 +21,24 @@ def extract_bas_deb(directory: str) -> dict:
             print(deb_idx)
             print(bas.groupby("transaction_date")["transaction_date_time"].max())
             deb_per_date = bas.loc[deb_idx, ["transaction_date", "Số dư cuối"]]
+            print(deb_per_date)
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
+
+def extract_bas_deb_by_order(directory: str) -> dict:
+    for file_name in os.listdir(directory):
+        if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
+            bas_file_path = os.path.join(directory, file_name)
+            print(bas_file_path)
+            bas = pandas.read_excel(bas_file_path, dtype=str)
+            bas["transaction_date_time"] = pandas.pandas.to_datetime(bas["Thời gian giao dịch"]).dt.date
+            deduplicated_transaction_dates =  bas["transaction_date_time"].drop_duplicates()
+            deb_per_date = {}
+            if (deduplicated_transaction_dates.is_monotonic_decreasing):
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first()[["transaction_date_time", "Số dư cuối"]]
+            elif (deduplicated_transaction_dates.is_monotonic_increasing):
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last()[["transaction_date_time", "Số dư cuối"]]
+            else:
+                return None
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
@@ -61,8 +79,12 @@ def export_results(bas_deb: dict, evn_deb: dict):
 
     return results
 
-exe_path = sys.argv[0]
-exe_dir = os.path.dirname(exe_path) # pathlib.Path(__file__).parent.resolve()
-bas_deb = extract_bas_deb(exe_dir)
-evn_deb = extract_evn_deb(exe_dir)
+# exe_path = sys.argv[0]
+# exe_dir = os.path.dirname(exe_path) # pathlib.Path(__file__).parent.resolve()
+# bas_deb = extract_bas_deb_by_time(exe_dir)
+# evn_deb = extract_evn_deb(exe_dir)
+# export_results(bas_deb, evn_deb)
+
+bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve())
+evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
 export_results(bas_deb, evn_deb)
