@@ -14,13 +14,12 @@ def extract_bas_deb_by_time(directory: str) -> dict:
             bas_file_path = os.path.join(directory, file_name)
             print(bas_file_path)
             bas = pandas.read_excel(bas_file_path, dtype=str)
+            bas.insert(0, "transaction_date_time", pandas.to_datetime(bas.iloc[:, 1]))
+            bas.insert(1, "transaction_date", bas["transaction_date_time"].dt.date)
             print(bas)
-            bas["transaction_date_time"] = pandas.to_datetime(bas["Thời gian giao dịch"])
-            bas["transaction_date"] = bas["transaction_date_time"].dt.date
             deb_idx = bas.groupby("transaction_date")["transaction_date_time"].idxmax()
-            print(deb_idx)
             print(bas.groupby("transaction_date")["transaction_date_time"].max())
-            deb_per_date = bas.loc[deb_idx, ["transaction_date", "Số dư cuối"]]
+            deb_per_date = bas.iloc[deb_idx, [13, 8]]
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
@@ -30,13 +29,14 @@ def extract_bas_deb_by_order(directory: str) -> dict:
             bas_file_path = os.path.join(directory, file_name)
             print(bas_file_path)
             bas = pandas.read_excel(bas_file_path, dtype=str)
-            bas["transaction_date_time"] = pandas.pandas.to_datetime(bas["Thời gian giao dịch"]).dt.date
+            bas.insert(0, "transaction_date_time", pandas.pandas.to_datetime(bas.iloc[:, 1]).dt.date)
             deduplicated_transaction_dates =  bas["transaction_date_time"].drop_duplicates()
             deb_per_date = {}
+            print(bas)
             if (deduplicated_transaction_dates.is_monotonic_decreasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first()[["transaction_date_time", "Số dư cuối"]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first().iloc[:, [0, 9]]
             elif (deduplicated_transaction_dates.is_monotonic_increasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last()[["transaction_date_time", "Số dư cuối"]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last().iloc[:, [0, 9]]
             else:
                 return None
             print(deb_per_date)
