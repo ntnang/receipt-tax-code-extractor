@@ -1,0 +1,17 @@
+agribank:
+  col-start-idx: 0
+  col-end-idx: 11
+  skip-rows: 0
+  skip-footers: 0
+  date-col-idx: 1
+  bal-col-idx: 9
+  date-format: "%d/%m/%Y %H:%M:%S"
+
+bidv:
+  col-start-idx: 1
+  col-end-idx: 9
+  skip-rows: 13
+  skip-footers: 5
+  date-col-idx: 1
+  bal-col-idx: 6
+  date-format: "%d/%m/%Y %H:%M:%S"

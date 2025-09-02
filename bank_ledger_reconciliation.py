@@ -2,6 +2,7 @@ import os
 import pandas
 import pathlib
 from openpyxl import load_workbook
+import yaml
 import sys
 
 # bas = bank account statement
@@ -19,28 +20,44 @@ def extract_bas_deb_by_time(directory: str) -> dict:
             print(bas)
             deb_idx = bas.groupby("transaction_date")["transaction_date_time"].idxmax()
             print(bas.groupby("transaction_date")["transaction_date_time"].max())
-            deb_per_date = bas.iloc[deb_idx, [13, 8]]
+            deb_per_date = bas.iloc[deb_idx, [0, 10]]
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
-def extract_bas_deb_by_order(directory: str) -> dict:
+def extract_bas_deb_by_order(directory: str, cfg) -> dict:
     for file_name in os.listdir(directory):
         if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
+            cfg_by_bank = get_configurations_by_bank(file_name, cfg)
+            print(cfg_by_bank)
             bas_file_path = os.path.join(directory, file_name)
             print(bas_file_path)
-            bas = pandas.read_excel(bas_file_path, dtype=str)
-            bas.insert(0, "transaction_date_time", pandas.pandas.to_datetime(bas.iloc[:, 1]).dt.date)
+            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=range(cfg_by_bank["col-start-idx"], cfg_by_bank["col-end-idx"]), skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
+            print(bas)
+            bas.insert(0, "transaction_date_time", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
             deduplicated_transaction_dates =  bas["transaction_date_time"].drop_duplicates()
             deb_per_date = {}
             print(bas)
             if (deduplicated_transaction_dates.is_monotonic_decreasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first().iloc[:, [0, 9]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first().iloc[:, [0, cfg_by_bank["bal-col-idx"]]]
             elif (deduplicated_transaction_dates.is_monotonic_increasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last().iloc[:, [0, 9]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last().iloc[:, [0, cfg_by_bank["bal-col-idx"]]]
             else:
                 return None
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
+
+def get_configurations_by_bank(file_name: str, cfg):
+    if file_name.__contains__("Agribank"):
+        print("agribank")
+        return cfg.get("agribank")
+    elif file_name.__contains__("BIDV"):
+        print("bidv")
+        return cfg.get("bidv")
+
+def get_configurations(file_name: str):
+    # Load YAML file
+    with open(file_name, 'r') as config:
+        return yaml.safe_load(config)
 
 def calculate_bas_deb(directory):
     return
@@ -70,7 +87,7 @@ def export_results(bas_deb: dict, evn_deb: dict):
         results.append(dict(index=idx+1, transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
     print(results)
 
-    start_row = 7
+    start_row = 8
     for i, row in enumerate(results, start=start_row):
         for j, key in enumerate(row, start=1):
             rt_ws.cell(row=i, column=j, value=row[key])
@@ -85,6 +102,8 @@ def export_results(bas_deb: dict, evn_deb: dict):
 # evn_deb = extract_evn_deb(exe_dir)
 # export_results(bas_deb, evn_deb)
 
-bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve())
+cfg = get_configurations("configurations.yaml")
+print(cfg)
+bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve(), cfg)
 evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
 export_results(bas_deb, evn_deb)
