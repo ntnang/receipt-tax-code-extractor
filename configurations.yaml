@@ -1,6 +1,5 @@
 agribank:
-  col-start-idx: 0
-  col-end-idx: 11
+  col-range: "A:L"
   skip-rows: 0
   skip-footers: 0
   date-col-idx: 1
@@ -8,10 +7,17 @@ agribank:
   date-format: "%d/%m/%Y %H:%M:%S"
 
 bidv:
-  col-start-idx: 1
-  col-end-idx: 9
+  col-range: "B:I"
   skip-rows: 13
   skip-footers: 5
   date-col-idx: 1
   bal-col-idx: 6
   date-format: "%d/%m/%Y %H:%M:%S"
+
+abbank:
+  col-range: "A:G"
+  skip-rows: 0
+  skip-footers: 0
+  date-col-idx: 1
+  bal-col-idx: 7
+  date-format: "%d/%m/%Y"

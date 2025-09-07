@@ -31,7 +31,7 @@ def extract_bas_deb_by_order(directory: str, cfg) -> dict:
             print(cfg_by_bank)
             bas_file_path = os.path.join(directory, file_name)
             print(bas_file_path)
-            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=range(cfg_by_bank["col-start-idx"], cfg_by_bank["col-end-idx"]), skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
+            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"], )
             print(bas)
             bas.insert(0, "transaction_date_time", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
             deduplicated_transaction_dates =  bas["transaction_date_time"].drop_duplicates()
@@ -53,6 +53,9 @@ def get_configurations_by_bank(file_name: str, cfg):
     elif file_name.__contains__("BIDV"):
         print("bidv")
         return cfg.get("bidv")
+    elif file_name.__contains__("Abbank"):
+        print("abbank")
+        return cfg.get("abbank")
 
 def get_configurations(file_name: str):
     # Load YAML file
