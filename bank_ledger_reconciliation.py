@@ -74,6 +74,12 @@ def get_configurations_by_bank(file_name: str, cfg):
     elif file_name.__contains__("PVcomBank"):
         print("pvcombank")
         return cfg.get("pvcombank")
+    elif file_name.__contains__("VIB"):
+        print("vib")
+        return cfg.get("vib")
+    elif file_name.__contains__("LPBank"):
+        print("lpbank")
+        return cfg.get("lpbank")
 
 def get_configurations(file_name: str):
     # Load YAML file
@@ -118,14 +124,16 @@ def export_results(bas_deb: dict, evn_deb: dict):
 
     return results
 
-# exe_path = sys.argv[0]
-# exe_dir = os.path.dirname(exe_path) # pathlib.Path(__file__).parent.resolve()
-# bas_deb = extract_bas_deb_by_time(exe_dir)
-# evn_deb = extract_evn_deb(exe_dir)
-# export_results(bas_deb, evn_deb)
-
 cfg = get_configurations("configurations.yaml")
 print(cfg)
-bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve(), cfg)
-evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+
+exe_path = sys.argv[0]
+exe_dir = os.path.dirname(exe_path)
+bas_deb = extract_bas_deb_by_order(exe_dir, cfg)
+evn_deb = extract_evn_deb(exe_dir)
 export_results(bas_deb, evn_deb)
+
+
+# bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve(), cfg)
+# evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+# export_results(bas_deb, evn_deb)
