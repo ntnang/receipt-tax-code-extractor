@@ -31,20 +31,20 @@ def extract_bas_deb_by_order(directory: str, cfg) -> dict:
             print(cfg_by_bank)
             bas_file_path = os.path.join(directory, file_name)
             print(bas_file_path)
-            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"], )
+            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
             print(bas)
             bas.insert(0, "transaction_date_time", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
             deduplicated_transaction_dates =  bas["transaction_date_time"].drop_duplicates()
             deb_per_date = {}
             print(bas)
             if (deduplicated_transaction_dates.is_monotonic_decreasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first().iloc[:, [0, cfg_by_bank["bal-col-idx"]]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).first().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
             elif (deduplicated_transaction_dates.is_monotonic_increasing):
-                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last().iloc[:, [0, cfg_by_bank["bal-col-idx"]]]
+                deb_per_date = bas.groupby("transaction_date_time", as_index=False).last().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
             else:
                 return None
             print(deb_per_date)
-    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(cfg_by_bank["thousand-separator"], "").astype(int)))
 
 def get_configurations_by_bank(file_name: str, cfg):
     if file_name.__contains__("Agribank"):
@@ -56,6 +56,24 @@ def get_configurations_by_bank(file_name: str, cfg):
     elif file_name.__contains__("Abbank"):
         print("abbank")
         return cfg.get("abbank")
+    elif file_name.__contains__("Vietinbank"):
+        print("vietinbank")
+        return cfg.get("vietinbank")
+    elif file_name.__contains__("Eximbank"):
+        print("eximbank")
+        return cfg.get("eximbank")
+    elif file_name.__contains__("Sacombank"):
+        print("sacombank")
+        return cfg.get("sacombank")
+    elif file_name.__contains__("OCB"):
+        print("ocb")
+        return cfg.get("ocb")
+    elif file_name.__contains__("Nam A Bank"):
+        print("namabank")
+        return cfg.get("namabank")
+    elif file_name.__contains__("PVcomBank"):
+        print("pvcombank")
+        return cfg.get("pvcombank")
 
 def get_configurations(file_name: str):
     # Load YAML file
@@ -74,7 +92,7 @@ def extract_evn_deb(directory: str) -> dict:
             deb_per_date = evn.loc[evn[7].notna()].iloc[:, [4, 7]]
             deb_per_date[4] = pandas.to_datetime(deb_per_date[4].str[-10:], format="%d/%m/%Y").dt.date
             print(deb_per_date)
-    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(" ", "").astype(int)))
 
 def export_results(bas_deb: dict, evn_deb: dict):
     rt_file_name = "KQ doi soat So phu NH - EVN_CM_009.xlsx"
@@ -87,7 +105,8 @@ def export_results(bas_deb: dict, evn_deb: dict):
     
     results = []
     for idx, (key, value) in enumerate(bas_deb.items()):
-        results.append(dict(index=idx+1, transaction_date=key, bas_deb_res=value, evn_deb_res=evn_deb[key], diff=(int(evn_deb[key].replace(" ", "")) - int(value.replace(",", "")))))
+        matching_deb = evn_deb[key] if key in evn_deb else 0
+        results.append(dict(index=idx+1, transaction_date=key, bas_deb_res=value, evn_deb_res=matching_deb, diff=(abs(matching_deb - value))))
     print(results)
 
     start_row = 8

@@ -3,21 +3,78 @@ agribank:
   skip-rows: 0
   skip-footers: 0
   date-col-idx: 1
-  bal-col-idx: 9
+  bal-col-idx: 8
   date-format: "%d/%m/%Y %H:%M:%S"
+  thousand-separator: ","
 
 bidv:
   col-range: "B:I"
   skip-rows: 13
   skip-footers: 5
   date-col-idx: 1
-  bal-col-idx: 6
+  bal-col-idx: 5
   date-format: "%d/%m/%Y %H:%M:%S"
+  thousand-separator: ","
 
 abbank:
   col-range: "A:G"
   skip-rows: 0
   skip-footers: 0
   date-col-idx: 1
+  bal-col-idx: 6
+  date-format: "%d/%m/%Y"
+  thousand-separator: ","
+
+vietinbank:
+  col-range: "A:L"
+  skip-rows: 24
+  skip-footers: 2
+  date-col-idx: 1
+  bal-col-idx: 5
+  date-format: "%d-%m-%Y %H:%M:%S"
+  thousand-separator: ","
+
+eximbank:
+  col-range: "A:G"
+  skip-rows: [0, 1, 2, 3, 4, 6]
+  skip-footers: 4
+  date-col-idx: 1
+  bal-col-idx: 5
+  date-format: "%d/%m/%Y %H:%M:%S"
+  thousand-separator: ","
+
+sacombank:
+  col-range: "C:R"
+  skip-rows: 11
+  skip-footers: 5
+  date-col-idx: 6
+  bal-col-idx: 15
+  date-format: "%d-%m-%Y"
+  thousand-separator: "."
+
+ocb:
+  col-range: "A:K"
+  skip-rows: 14
+  skip-footers: 0
+  date-col-idx: 2
+  bal-col-idx: 10
+  date-format: "%Y-%m-%d"
+  thousand-separator: ","
+
+namabank:
+  col-range: "A:H"
+  skip-rows: [0, 1, 2, 3, 5]
+  skip-footers: 4
+  date-col-idx: 2
   bal-col-idx: 7
   date-format: "%d/%m/%Y"
+  thousand-separator: ","
+
+pvcombank:
+  col-range: "A:H"
+  skip-rows: 9
+  skip-footers: 7
+  date-col-idx: 2
+  bal-col-idx: 7
+  date-format: "%d/%m/%Y"
+  thousand-separator: ","
