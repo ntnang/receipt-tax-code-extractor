@@ -46,49 +46,6 @@ def extract_bas_deb_by_order(directory: str, cfg) -> dict:
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(cfg_by_bank["thousand-separator"], "").astype(int)))
 
-def get_configurations_by_bank(file_name: str, cfg):
-    if file_name.__contains__("Agribank"):
-        print("agribank")
-        return cfg.get("agribank")
-    elif file_name.__contains__("BIDV"):
-        print("bidv")
-        return cfg.get("bidv")
-    elif file_name.__contains__("Abbank"):
-        print("abbank")
-        return cfg.get("abbank")
-    elif file_name.__contains__("Vietinbank"):
-        print("vietinbank")
-        return cfg.get("vietinbank")
-    elif file_name.__contains__("Eximbank"):
-        print("eximbank")
-        return cfg.get("eximbank")
-    elif file_name.__contains__("Sacombank"):
-        print("sacombank")
-        return cfg.get("sacombank")
-    elif file_name.__contains__("OCB"):
-        print("ocb")
-        return cfg.get("ocb")
-    elif file_name.__contains__("Nam A Bank"):
-        print("namabank")
-        return cfg.get("namabank")
-    elif file_name.__contains__("PVcomBank"):
-        print("pvcombank")
-        return cfg.get("pvcombank")
-    elif file_name.__contains__("VIB"):
-        print("vib")
-        return cfg.get("vib")
-    elif file_name.__contains__("LPBank"):
-        print("lpbank")
-        return cfg.get("lpbank")
-
-def get_configurations(file_name: str):
-    # Load YAML file
-    with open(file_name, 'r') as config:
-        return yaml.safe_load(config)
-
-def calculate_bas_deb(directory):
-    return
-
 def extract_evn_deb(directory: str) -> dict:
     for file_name in os.listdir(directory):
         if file_name.startswith("So TGNH") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
@@ -123,6 +80,18 @@ def export_results(bas_deb: dict, evn_deb: dict):
     rt_wb.save("KQ doi soat So phu NH - EVN_CM_009_test.xlsx")
 
     return results
+
+def get_configurations_by_bank(file_name: str, cfg: dict) -> dict:
+    normalized_file_name = re.sub(r"\s+", "", file_name).lower()
+    for (key, value) in cfg.items():
+        if key in normalized_file_name:
+            return value
+    return None
+
+def get_configurations(file_name: str):
+    # Load YAML file
+    with open(file_name, 'r') as config:
+        return yaml.safe_load(config)
 
 cfg = get_configurations("configurations.yaml")
 print(cfg)
