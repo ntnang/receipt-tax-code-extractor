@@ -78,3 +78,25 @@ pvcombank:
   bal-col-idx: 7
   date-format: "%d/%m/%Y"
   thousand-separator: ","
+
+vietcombank:
+  col-range: "A:E"
+  skip-rows: 10
+  skip-footers: 18
+  date-col-idx: 0
+  debit-col-idx: 2
+  credit-col-idx: 3
+  bal-cell-addr: "B10"
+  date-format: "%Y-%m-%d %H:%M:%S"
+  thousand-separator: ","
+
+mb:
+  col-range: "A:O"
+  skip-rows: 8
+  skip-footers: 3
+  date-col-idx: 1
+  debit-col-idx: 3
+  credit-col-idx: 4
+  bal-cell-addr: "C8"
+  date-format: "%d/%m/%Y"
+  thousand-separator: ","
