@@ -5,7 +5,6 @@ from openpyxl import load_workbook
 import yaml
 import sys
 import re
-from openpyxl import load_workbook
 
 # bas = bank account statement
 # deb = day end balance
@@ -72,21 +71,30 @@ def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
             wb = load_workbook(bas_file_path, data_only=True)
             ws = wb.active   # or wb["Sheet1"]
 
-            val = ws[cfg_by_bank["bal-cell-addr"]].value   # Excel-style reference
-            print(val)
+            original_balance = ws[cfg_by_bank["bal-cell-addr"]].value   # Excel-style reference
+            print(original_balance)
 
             bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
             print(bas)
 
             bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
 
-            bas.columns[cfg_by_bank["debit-col-idx"] + 1] = int(bas.columns[cfg_by_bank["debit-col-idx"] + 1])
-            bas.columns[cfg_by_bank["credit-col-idx"] + 1] = int(bas.columns[cfg_by_bank["credit-col-idx"] + 1])
+            bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] =  pandas.to_numeric(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1], errors="coerce").fillna(0).astype(int)
+            bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1] =  pandas.to_numeric(bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1], errors="coerce").fillna(0).astype(int)
 
             total_debit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["debit-col-idx"] + 1]].sum()
-            print(total_debit_amount_per_day)
             total_credit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["credit-col-idx"] + 1]].sum()
+
+            total_debit_amount_per_day["cummulative_sum"] = total_debit_amount_per_day.iloc[:, 1].cumsum()
+            total_credit_amount_per_day["cummulative_sum"] = total_credit_amount_per_day.iloc[:, 1].cumsum()
+
+            print(total_debit_amount_per_day)
             print(total_credit_amount_per_day)
+
+            deb_per_date = dict(zip(total_credit_amount_per_day["transaction_date"], int(original_balance) + total_credit_amount_per_day["cummulative_sum"] - total_debit_amount_per_day["cummulative_sum"]))
+            print(deb_per_date)
+
+            return deb_per_date
     return None
 
 def extract_evn_deb(directory: str) -> dict:
@@ -123,7 +131,7 @@ def export_results(bas_deb: dict, evn_deb: dict):
         for j, key in enumerate(row, start=1):
             rt_ws.cell(row=i, column=j, value=row[key])
     
-    rt_wb.save("KQ doi soat So phu NH - EVN_CM_009_test.xlsx")
+    rt_wb.save("KQ doi soat So phu NH - EVN_CM_009_final_result.xlsx")
 
     return results
 
@@ -142,7 +150,9 @@ def get_configurations(file_name: str):
 cfg = get_configurations("configurations.yaml")
 print(cfg)
 
-calculate_bas_deb(pathlib.Path(__file__).parent.resolve(), cfg)
+bas_deb = calculate_bas_deb(pathlib.Path(__file__).parent.resolve(), cfg)
+evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+export_results(bas_deb, evn_deb)
 
 # exe_path = sys.argv[0]
 # exe_dir = os.path.dirname(exe_path)
