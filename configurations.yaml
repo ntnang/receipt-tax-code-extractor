@@ -94,9 +94,9 @@ mb:
   col-range: "A:O"
   skip-rows: 8
   skip-footers: 3
-  date-col-idx: 1
-  debit-col-idx: 3
-  credit-col-idx: 4
+  date-col-idx: 3
+  debit-col-idx: 7
+  credit-col-idx: 8
   bal-cell-addr: "C8"
   date-format: "%d/%m/%Y"
   thousand-separator: ","

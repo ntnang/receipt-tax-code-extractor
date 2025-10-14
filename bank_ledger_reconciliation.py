@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 import yaml
 import sys
 import re
+import numpy as np
 
 # bas = bank account statement
 # deb = day end balance
@@ -51,7 +52,7 @@ def extract_bas_deb_by_order(directory: str, cfg) -> dict:
                 return None
             
             print(deb_per_date)
-    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(cfg_by_bank["thousand-separator"], "").astype(int)))
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(cfg_by_bank["thousand-separator"], "").astype("int64")))
 
 def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
     if cfg_by_bank is None:
@@ -72,6 +73,8 @@ def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
             ws = wb.active   # or wb["Sheet1"]
 
             original_balance = ws[cfg_by_bank["bal-cell-addr"]].value   # Excel-style reference
+            if type(original_balance) is str:
+                original_balance = extract_balance_in_text(original_balance)
             print(original_balance)
 
             bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
@@ -79,8 +82,12 @@ def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
 
             bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
 
-            bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] =  pandas.to_numeric(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1], errors="coerce").fillna(0).astype(int)
-            bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1] =  pandas.to_numeric(bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1], errors="coerce").fillna(0).astype(int)
+            bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
+            bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
+
+            # For debugging purpose
+            # print(bas[(bas["transaction_date"] == pandas.to_datetime("2025-02-04").date()) & (bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] != 0)])
+            # print(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1].dtype)
 
             total_debit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["debit-col-idx"] + 1]].sum()
             total_credit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["credit-col-idx"] + 1]].sum()
@@ -91,10 +98,18 @@ def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
             print(total_debit_amount_per_day)
             print(total_credit_amount_per_day)
 
-            deb_per_date = dict(zip(total_credit_amount_per_day["transaction_date"], int(original_balance) + total_credit_amount_per_day["cummulative_sum"] - total_debit_amount_per_day["cummulative_sum"]))
+            deb_per_date = dict(zip(total_credit_amount_per_day["transaction_date"], original_balance + total_credit_amount_per_day["cummulative_sum"] - total_debit_amount_per_day["cummulative_sum"]))
             print(deb_per_date)
 
             return deb_per_date
+    return None
+
+def extract_balance_in_text(text: str) -> dict:
+    # Extract digits, commas, and decimal point
+    match = re.search(r'[\d,]+(?:\.\d+)?', text)
+    if match:
+        number_str = match.group(0).replace(',', '')
+        return np.int64(float(number_str))
     return None
 
 def extract_evn_deb(directory: str) -> dict:
@@ -106,7 +121,7 @@ def extract_evn_deb(directory: str) -> dict:
             deb_per_date = evn.loc[evn[7].notna()].iloc[:, [4, 7]]
             deb_per_date[4] = pandas.to_datetime(deb_per_date[4].str[-10:], format="%d/%m/%Y").dt.date
             print(deb_per_date)
-    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(" ", "").astype(int)))
+    return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(" ", "").astype("int64")))
 
 def export_results(bas_deb: dict, evn_deb: dict):
     if bas_deb is None or evn_deb is None:
