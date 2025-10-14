@@ -7,6 +7,13 @@ import sys
 import re
 import numpy as np
 
+import clr
+clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Drawing")
+
+from System.Windows.Forms import Application, Form, Button, Label
+from System.Drawing import Point, Size
+
 # bas = bank account statement
 # deb = day end balance
 # rt = result template
@@ -26,82 +33,74 @@ def extract_bas_deb_by_time(directory: str) -> dict:
             print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1]))
 
-def extract_bas_deb_by_order(directory: str, cfg) -> dict:
-    for file_name in os.listdir(directory):
-        if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
-            cfg_by_bank = get_configurations_by_bank(file_name, cfg)
-            print(cfg_by_bank)
-
-            if cfg_by_bank is None:
-                return None
-
-            bas_file_path = os.path.join(directory, file_name)
-            print(bas_file_path)
-            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
-            print(bas)
-            bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
-            deduplicated_transaction_dates =  bas["transaction_date"].drop_duplicates()
-            deb_per_date = {}
-            print(bas)
-            
-            if (deduplicated_transaction_dates.is_monotonic_decreasing):
-                deb_per_date = bas.groupby("transaction_date", as_index=False).first().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
-            elif (deduplicated_transaction_dates.is_monotonic_increasing):
-                deb_per_date = bas.groupby("transaction_date", as_index=False).last().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
-            else:
-                return None
-            
-            print(deb_per_date)
+def extract_bas_deb_by_order(directory: str, file_name: str, cfg_by_bank: dict) -> dict:
+    bas_file_path = os.path.join(directory, file_name)
+    print(bas_file_path)
+    bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
+    print(bas)
+    bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
+    deduplicated_transaction_dates =  bas["transaction_date"].drop_duplicates()
+    deb_per_date = {}
+    print(bas)
+    
+    if (deduplicated_transaction_dates.is_monotonic_decreasing):
+        deb_per_date = bas.groupby("transaction_date", as_index=False).first().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
+    elif (deduplicated_transaction_dates.is_monotonic_increasing):
+        deb_per_date = bas.groupby("transaction_date", as_index=False).last().iloc[:, [0, cfg_by_bank["bal-col-idx"] + 1]]
+    else:
+        return None
+    
+    print(deb_per_date)
     return dict(zip(deb_per_date.iloc[:, 0], deb_per_date.iloc[:, 1].str.replace(cfg_by_bank["thousand-separator"], "").astype("int64")))
 
-def calculate_bas_deb(directory: str, cfg_by_bank: dict) -> dict:
-    if cfg_by_bank is None:
+def calculate_bas_deb(directory: str, file_name: str, cfg_by_bank: dict) -> dict:
+    bas_file_path = os.path.join(directory, file_name)
+    print(bas_file_path)
+
+    wb = load_workbook(bas_file_path, data_only=True)
+    ws = wb.active   # or wb["Sheet1"]
+
+    original_balance = ws[cfg_by_bank["bal-cell-addr"]].value   # Excel-style reference
+    if type(original_balance) is str:
+        original_balance = extract_balance_in_text(original_balance)
+    print(original_balance)
+
+    bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
+    print(bas)
+
+    bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
+
+    bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
+    bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
+
+    # For debugging purpose
+    # print(bas[(bas["transaction_date"] == pandas.to_datetime("2025-02-04").date()) & (bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] != 0)])
+    # print(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1].dtype)
+
+    total_debit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["debit-col-idx"] + 1]].sum()
+    total_credit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["credit-col-idx"] + 1]].sum()
+
+    total_debit_amount_per_day["cummulative_sum"] = total_debit_amount_per_day.iloc[:, 1].cumsum()
+    total_credit_amount_per_day["cummulative_sum"] = total_credit_amount_per_day.iloc[:, 1].cumsum()
+
+    print(total_debit_amount_per_day)
+    print(total_credit_amount_per_day)
+
+    deb_per_date = dict(zip(total_credit_amount_per_day["transaction_date"], original_balance + total_credit_amount_per_day["cummulative_sum"] - total_debit_amount_per_day["cummulative_sum"]))
+    print(deb_per_date)
+
+    return deb_per_date
+
+def determine_strategy(directory: str, cfg: dict) -> dict:
+    if cfg is None:
         return None
     
     for file_name in os.listdir(directory):
         if file_name.startswith("So phu Ngan hang") and (file_name.endswith("xls") or file_name.endswith("xlsx")):
             cfg_by_bank = get_configurations_by_bank(file_name, cfg)
-            print(cfg_by_bank)
-
-            if cfg_by_bank is None:
-                return None
-
-            bas_file_path = os.path.join(directory, file_name)
-            print(bas_file_path)
-
-            wb = load_workbook(bas_file_path, data_only=True)
-            ws = wb.active   # or wb["Sheet1"]
-
-            original_balance = ws[cfg_by_bank["bal-cell-addr"]].value   # Excel-style reference
-            if type(original_balance) is str:
-                original_balance = extract_balance_in_text(original_balance)
-            print(original_balance)
-
-            bas = pandas.read_excel(bas_file_path, dtype=str, usecols=cfg_by_bank["col-range"], skiprows=cfg_by_bank["skip-rows"], skipfooter=cfg_by_bank["skip-footers"])
-            print(bas)
-
-            bas.insert(0, "transaction_date", pandas.to_datetime(bas.iloc[:, cfg_by_bank["date-col-idx"]], format=cfg_by_bank["date-format"]).dt.date)
-
-            bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
-            bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1] = pandas.to_numeric(bas.iloc[:, cfg_by_bank["credit-col-idx"] + 1], errors="coerce").fillna(0).astype("int64")
-
-            # For debugging purpose
-            # print(bas[(bas["transaction_date"] == pandas.to_datetime("2025-02-04").date()) & (bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1] != 0)])
-            # print(bas.iloc[:, cfg_by_bank["debit-col-idx"] + 1].dtype)
-
-            total_debit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["debit-col-idx"] + 1]].sum()
-            total_credit_amount_per_day = bas.groupby("transaction_date", as_index=False)[bas.columns[cfg_by_bank["credit-col-idx"] + 1]].sum()
-
-            total_debit_amount_per_day["cummulative_sum"] = total_debit_amount_per_day.iloc[:, 1].cumsum()
-            total_credit_amount_per_day["cummulative_sum"] = total_credit_amount_per_day.iloc[:, 1].cumsum()
-
-            print(total_debit_amount_per_day)
-            print(total_credit_amount_per_day)
-
-            deb_per_date = dict(zip(total_credit_amount_per_day["transaction_date"], original_balance + total_credit_amount_per_day["cummulative_sum"] - total_debit_amount_per_day["cummulative_sum"]))
-            print(deb_per_date)
-
-            return deb_per_date
+            if "vietcombank" in file_name.lower() or "mb" in file_name.lower():
+                return calculate_bas_deb(directory, file_name, cfg_by_bank)
+            else: return extract_bas_deb_by_order(directory, file_name, cfg_by_bank)
     return None
 
 def extract_balance_in_text(text: str) -> dict:
@@ -162,12 +161,12 @@ def get_configurations(file_name: str):
     with open(file_name, 'r') as config:
         return yaml.safe_load(config)
 
-cfg = get_configurations("configurations.yaml")
-print(cfg)
+# cfg = get_configurations("configurations.yaml")
+# print(cfg)
 
-bas_deb = calculate_bas_deb(pathlib.Path(__file__).parent.resolve(), cfg)
-evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
-export_results(bas_deb, evn_deb)
+# bas_deb = determine_strategy(pathlib.Path(__file__).parent.resolve(), cfg)
+# evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
+# export_results(bas_deb, evn_deb)
 
 # exe_path = sys.argv[0]
 # exe_dir = os.path.dirname(exe_path)
@@ -178,3 +177,45 @@ export_results(bas_deb, evn_deb)
 # bas_deb = extract_bas_deb_by_order(pathlib.Path(__file__).parent.resolve(), cfg)
 # evn_deb = extract_evn_deb(pathlib.Path(__file__).parent.resolve())
 # export_results(bas_deb, evn_deb)
+
+def execute():
+    cfg = get_configurations("configurations.yaml")
+    print(cfg)
+
+    exe_path = sys.argv[0]
+    exe_dir = os.path.dirname(exe_path)
+    bas_deb = determine_strategy(exe_dir, cfg)
+    evn_deb = extract_evn_deb(exe_dir)
+    export_results(bas_deb, evn_deb)
+class MyForm(Form):
+    def __init__(self):
+        
+        # VERY IMPORTANT: call the base constructor
+        Form.__init__(self)
+
+        self.Text = "Bank Ledger Reconciliation App"
+        self.Width = 300
+        self.Height = 200
+
+        # Label
+        self.label = Label()
+        self.label.Text = "PHẦN MỀM ĐỐI SOÁT SỔ PHỤ NGÂN HÀNG VÀ SỔ TIỀN GỬI NGÂN HÀNG (ERP)"
+        self.label.Location = Point(50, 50)
+        self.label.AutoSize = True
+        self.Controls.Add(self.label)
+
+        # Button
+        self.button = Button()
+        self.button.Text = "Thực hiện"
+        self.button.Location = Point(50, 100)
+        self.button.Size = Size(100, 30)
+        self.button.Click += self.on_button_click
+        self.Controls.Add(self.button)
+
+    def on_button_click(self, sender, event):
+        execute()
+
+# Run the app
+if __name__ == "__main__":
+    form = MyForm()
+    Application.Run(form)
