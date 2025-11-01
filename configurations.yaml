@@ -79,6 +79,15 @@ pvcombank:
   date-format: "%d/%m/%Y"
   thousand-separator: ","
 
+vib:
+  col-range: "A:AM"
+  skip-rows: 10
+  skip-footers: 12
+  date-col-idx: 0
+  bal-col-idx: 31
+  date-format: "%d/%m/%Y"
+  thousand-separator: ","
+
 vietcombank:
   col-range: "A:E"
   skip-rows: 10

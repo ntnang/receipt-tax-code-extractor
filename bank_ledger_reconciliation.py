@@ -187,6 +187,7 @@ def execute():
     bas_deb = determine_strategy(exe_dir, cfg)
     evn_deb = extract_evn_deb(exe_dir)
     export_results(bas_deb, evn_deb)
+
 class MyForm(Form):
     def __init__(self):
         
